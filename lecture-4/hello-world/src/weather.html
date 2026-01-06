@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>天気予報アプリ</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #b0bec5;
+    }
+
+    header {
+      background: #3f2ea8;
+      color: white;
+      padding: 16px;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 64px);
+    }
+
+    aside {
+      width: 240px;
+      background: #78909c;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    aside label {
+      color: white;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    aside select {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    main {
+      flex: 1;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 200px);
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      min-height: 240px;
+      box-sizing: border-box;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .weather-text {
+      margin: 10px 0;
+      font-size: 14px;
+      white-space: normal;
+      word-break: keep-all;
+    }
+
+    .temp {
+      margin-top: 12px;
+      font-size: 15px;
+    }
+
+    .min {
+      color: #2196f3;
+    }
+
+    .max {
+      color: #e53935;
+    }
+
+    .today {
+      border: 2px solid #3f2ea8;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    ☀ 天気予報
+  </header>
+
+  <div class="container">
+    <aside>
+      <label>地域を選択</label>
+      <select id="areaSelect">
+        <option value="">-- 選択してください --</option>
+      </select>
+    </aside>
+
+    <main id="weather">
+      <p>地域を選択してください</p>
+    </main>
+  </div>
+
+  <script>
+    const areaSelect = document.getElementById("areaSelect");
+    const weatherArea = document.getElementById("weather");
+
+    // 天気アイコン判定
+    function getIcon(text) {
+      if (text.includes("晴")) return "☀";
+      if (text.includes("雨")) return "☔";
+      if (text.includes("雪")) return "❄";
+      if (text.includes("くもり")) return "☁";
+      return "⛅";
+    }
+
+    // 地域リスト取得
+    fetch("https://www.jma.go.jp/bosai/common/const/area.json")
+      .then(res => res.json())
+      .then(data => {
+        const offices = data.offices;
+        for (const code in offices) {
+          const option = document.createElement("option");
+          option.value = code;
+          option.textContent = `${offices[code].name} (${code})`;
+          areaSelect.appendChild(option);
+        }
+      });
+
+    // 地域選択時
+    areaSelect.addEventListener("change", () => {
+      const areaCode = areaSelect.value;
+      if (!areaCode) return;
+
+      fetch(`https://www.jma.go.jp/bosai/forecast/data/forecast/${areaCode}.json`)
+        .then(res => res.json())
+        .then(data => {
+          weatherArea.innerHTML = "";
+
+          const weatherSeries = data[0].timeSeries[0];
+          const tempSeries = data[1].timeSeries[1];
+
+          weatherSeries.timeDefines.forEach((time, i) => {
+            const card = document.createElement("div");
+            card.className = "card";
+            if (i === 0) card.classList.add("today");
+
+            const date = time.split("T")[0];
+            const weatherText = weatherSeries.areas[0].weathers[i];
+
+            const minTemp = tempSeries.areas[0].tempsMin[i];
+            const maxTemp = tempSeries.areas[0].tempsMax[i];
+
+            const minText = minTemp ? `${minTemp}℃` : "-";
+            const maxText = maxTemp ? `${maxTemp}℃` : "-";
+
+            card.innerHTML = `
+              <h3>${date}</h3>
+              <div class="icon">${getIcon(weatherText)}</div>
+              <div class="weather-text">${weatherText}</div>
+              <div class="temp">
+                <span class="min">${minText}</span> /
+                <span class="max">${maxText}</span>
+              </div>
+            `;
+
+            weatherArea.appendChild(card);
+          });
+        });
+    });
+  </script>
+</body>
+</html>
